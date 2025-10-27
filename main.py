@@ -323,7 +323,7 @@ def get_active_calls(driver):
                             if play_button:
                                 try:
                                     uuid = None
-                                    
+
                                     # Try onclick attribute first (most reliable)
                                     onclick = play_button.get_attribute('onclick')
                                     if onclick:
@@ -338,10 +338,10 @@ def get_active_calls(driver):
                                             uuid_match = re.search(r"['\"](\d{10,}\.\d+)['\"]", onclick)
                                             if uuid_match:
                                                 uuid = uuid_match.group(1)
-                                        
+
                                         if uuid:
                                             logger.info(f"✓ Extracted UUID from onclick: {uuid}")
-                                    
+
                                     # Fallback: Try all possible attributes
                                     if not uuid:
                                         for attr in ['data-uuid', 'data-call-id', 'data-id', 'id']:
@@ -350,7 +350,7 @@ def get_active_calls(driver):
                                                 logger.info(f"✓ Extracted UUID from {attr}: {uuid}")
                                                 break
                                             uuid = None
-                                    
+
                                     # Try extracting from button's parent row attributes
                                     if not uuid:
                                         try:
@@ -363,7 +363,7 @@ def get_active_calls(driver):
                                                 uuid = None
                                         except:
                                             pass
-                                    
+
                                     # Validate UUID format (should be like: 1234567890.12345)
                                     if uuid:
                                         if not re.match(r'^\d{10,}\.\d+$', uuid):
@@ -452,10 +452,10 @@ def get_active_calls(driver):
                                     uuid_match = re.search(r"['\"](\d{10,}\.\d+)['\"]", onclick)
                                     if uuid_match:
                                         uuid = uuid_match.group(1)
-                                
+
                                 if uuid:
                                     logger.info(f"✓ Extracted UUID from onclick (fallback): {uuid}")
-                            
+
                             # Fallback: Try all attributes
                             if not uuid:
                                 for attr in ['data-uuid', 'data-call-id', 'data-id', 'id']:
@@ -464,7 +464,7 @@ def get_active_calls(driver):
                                         logger.info(f"✓ Extracted UUID from {attr} (fallback): {uuid}")
                                         break
                                     uuid = None
-                            
+
                             # Validate UUID format
                             if uuid:
                                 if not re.match(r'^\d{10,}\.\d+$', uuid):
@@ -782,15 +782,15 @@ def download_audio_via_api(session_cookies, did, uuid, call_id, wait_for_complet
     try:
         # Construct API URL based on discovered endpoint
         api_url = f"https://www.orangecarrier.com/live/calls/sound?did={did}&uuid={uuid}"
-        
+
         if wait_for_completion:
             # 🔥 ULTRA-FAST INTELLIGENT WAIT: Minimal checks, instant download
             logger.info(f"⚡ [{call_id}] Smart wait for UUID {uuid}...")
-            
+
             session = requests.Session()
             for cookie in session_cookies:
                 session.cookies.set(cookie['name'], cookie['value'], domain=cookie.get('domain'))
-            
+
             headers = {
                 'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36',
                 'Referer': 'https://www.orangecarrier.com/live/calls',
@@ -800,22 +800,22 @@ def download_audio_via_api(session_cookies, did, uuid, call_id, wait_for_complet
                 'sec-fetch-mode': 'no-cors',
                 'sec-fetch-dest': 'audio'
             }
-            
+
             last_size = 0
             stable_count = 0
             max_wait = 30  # 30 seconds max
             total_waited = 0
             check_interval = 1  # Check every 1 second
             min_stable_checks = 3  # ⚡ INSTANT: Only 3 checks = 3 seconds!
-            
+
             while total_waited < max_wait:
                 try:
                     # Lightning-fast size check
                     range_headers = headers.copy()
                     range_headers['Range'] = 'bytes=0-1'
-                    
+
                     response = session.get(api_url, headers=range_headers, timeout=5, stream=True)
-                    
+
                     if response.status_code in [200, 206]:
                         content_range = response.headers.get('Content-Range')
                         if content_range:
@@ -827,13 +827,13 @@ def download_audio_via_api(session_cookies, did, uuid, call_id, wait_for_complet
                                 current_size = int(response.headers.get('Content-Length', 0))
                         else:
                             current_size = int(response.headers.get('Content-Length', 0))
-                        
+
                         response.close()
-                        
+
                         if current_size > 0:
                             if current_size == last_size:
                                 stable_count += 1
-                                
+
                                 # ⚡ ULTRA FAST: Complete after 3 checks (3 seconds!)
                                 if stable_count >= min_stable_checks:
                                     logger.info(f"⚡ [{call_id}] INSTANT complete! Size: {current_size} bytes")
@@ -841,19 +841,19 @@ def download_audio_via_api(session_cookies, did, uuid, call_id, wait_for_complet
                             else:
                                 last_size = current_size
                                 stable_count = 0
-                    
+
                     time.sleep(check_interval)
                     total_waited += check_interval
-                    
+
                 except Exception as e:
                     time.sleep(check_interval)
                     total_waited += check_interval
-            
+
             # ⚡ ZERO BUFFER - Download NOW!
-        
+
         # Download INSTANTLY
         logger.info(f"📥 [{call_id}] Downloading...")
-        
+
         session = requests.Session()
         for cookie in session_cookies:
             session.cookies.set(cookie['name'], cookie['value'], domain=cookie.get('domain'))
@@ -913,11 +913,28 @@ async def send_instant_notification(call_info):
         # Ensure phone number has + prefix
         phone_display = call_info['did'] if call_info['did'].startswith('+') else f"+{call_info['did']}"
 
-        message = f"📞 𝙽𝚎𝚠 𝚌𝚊𝚕𝚕 𝚛𝚎𝚌𝚎𝚒𝚟𝚎 𝚠𝚊𝚒𝚝𝚒𝚗𝚐\n\n{flag} {phone_display}"
+        # Mask phone number for privacy (show first 3 and last 3 digits only)
+        try:
+            parsed = phonenumbers.parse(phone_display, None)
+            country_code = f"+{parsed.country_code}"
+            national_number = str(parsed.national_number)
+            if len(national_number) > 3:
+                masked_national = '*' * (len(national_number) - 3) + national_number[-3:]
+            else:
+                masked_national = national_number
+            masked_phone = country_code + masked_national
+        except:
+            if len(phone_display) > 7:
+                masked_phone = phone_display[:4] + '******' + phone_display[-3:]
+            else:
+                masked_phone = phone_display
+
+        message = f"📞 𝙽𝚎𝚠 𝚌𝚊𝚕𝚕 𝚛𝚎𝚌𝚎𝚒𝚟𝚎 𝚠𝚊𝚒𝚝𝚒𝚗𝚐\n\n{flag} <code>{masked_phone}</code>"
 
         sent_message = await bot.send_message(
             chat_id=TELEGRAM_CHAT_ID,
-            text=message
+            text=message,
+            parse_mode=ParseMode.HTML
         )
 
         logger.info(f"Instant notification sent for DID {call_info['did']} ({flag} {country_name})")
@@ -975,14 +992,14 @@ async def send_to_telegram(audio_file, call_info, notification_msg_id=None):
         duration_num = 30  # Default fallback
         try:
             logger.info(f"🎵 Detecting ACTUAL duration from audio file: {audio_file}")
-            
+
             # Use ffprobe to get exact audio duration
             result = subprocess.run([
                 'ffprobe', '-v', 'error', '-show_entries', 
                 'format=duration', '-of', 
                 'default=noprint_wrappers=1:nokey=1', audio_file
             ], capture_output=True, text=True, timeout=10)
-            
+
             if result.returncode == 0:
                 duration_str = result.stdout.strip()
                 if duration_str:
@@ -992,7 +1009,7 @@ async def send_to_telegram(audio_file, call_info, notification_msg_id=None):
                     logger.warning(f"⚠ ffprobe returned empty, using default 30s")
             else:
                 logger.warning(f"⚠ ffprobe failed: {result.stderr}, using default 30s")
-                
+
         except subprocess.TimeoutExpired:
             logger.warning(f"⚠ ffprobe timeout, using default 30s")
         except FileNotFoundError:
@@ -1010,8 +1027,8 @@ async def send_to_telegram(audio_file, call_info, notification_msg_id=None):
         # Create inline keyboard with 3 buttons (Main Channel, OTP Group, Developer)
         keyboard = [
             [
-                InlineKeyboardButton(text="𝙼𝚊𝚒𝚗 𝙲𝚑𝚊𝚗𝚎𝚕", url="https://t.me/techbd50"),
-                InlineKeyboardButton(text="𝙾𝚝𝚙 𝙶𝚛𝚘𝚞𝚙", url="https://t.me/+sj1ueyzGbMM5ZWE1")
+                InlineKeyboardButton(text="𝙼𝚊𝚒𝚗 𝙲𝚑𝚊𝚗𝚎𝚕", url="https://t.me/+xLt6FPnb9GxmZmFl"),
+                InlineKeyboardButton(text="𝙽𝚞𝚖𝚋𝚎𝚛", url="https://t.me/+QuS3b5xfxVo0NGE9")
             ],
             [
                 InlineKeyboardButton(text="𝙳𝚎𝚟𝚎𝚕𝚘𝚙𝚎𝚛", url="https://t.me/Astro0_0o")
@@ -1095,7 +1112,7 @@ async def send_to_telegram(audio_file, call_info, notification_msg_id=None):
 def process_single_call(session_cookies, call, notification_msg_id=None):
     """Process a single call using API - NO driver needed, fully parallel with FULL recording!"""
     call_id = call['id']
-    
+
     try:
         logger.info(f"🚀 [{call_id}] ⚡ Starting FULL recording capture via API...")
         logger.info(f"📊 [{call_id}] DID={call['did']}, CLI={call['cli']}, UUID={call.get('uuid', 'N/A')}")
@@ -1103,7 +1120,7 @@ def process_single_call(session_cookies, call, notification_msg_id=None):
         # Check if UUID is available for API method
         if call.get('uuid') and call.get('did'):
             logger.info(f"✓ [{call_id}] UUID found - using SMART API method (waits for FULL recording!)")
-            
+
             # Download FULL recording via API - waits for completion automatically!
             logger.info(f"⏬ [{call_id}] Starting intelligent download system...")
             audio_file = download_audio_via_api(
@@ -1116,7 +1133,7 @@ def process_single_call(session_cookies, call, notification_msg_id=None):
 
             if audio_file:
                 logger.info(f"✓ [{call_id}] Audio file downloaded successfully: {audio_file}")
-                
+
                 # Send to Telegram as video
                 logger.info(f"📤 [{call_id}] Uploading to Telegram...")
                 success = asyncio.run(send_to_telegram(audio_file, call, notification_msg_id))
@@ -1186,7 +1203,7 @@ def monitor_calls(driver):
                     # 🔥 FIRE AND FORGET - Submit ALL calls instantly without waiting!
                     future_to_call = {}
                     notification_ids = {}
-                    
+
                     for call in new_calls:
                         # Send instant notification in background
                         try:
@@ -1195,7 +1212,7 @@ def monitor_calls(driver):
                         except Exception as e:
                             logger.debug(f"Notification error for {call['id']}: {e}")
                             notification_ids[call['id']] = None
-                        
+
                         # Submit to thread pool IMMEDIATELY - zero delay!
                         future = executor.submit(
                             process_single_call,
@@ -1217,7 +1234,7 @@ def monitor_calls(driver):
                                 logger.warning(f"⚠ [{call['id']}] Failed")
                         except Exception as e:
                             logger.error(f"⚠ [{call['id']}] Error: {e}")
-                    
+
                     # Add callbacks instead of blocking wait
                     for future, call in future_to_call.items():
                         future.add_done_callback(lambda f, c=call: log_result(f, c))
