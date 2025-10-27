@@ -4,6 +4,7 @@ python-telegram-bot==21.0.1
 requests==2.31.0
 phonenumbers==8.13.27
 pytz==2024.1
+telegram
 phonenumbers
 python-telegram-bot
 pytz
